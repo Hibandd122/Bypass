@@ -1,0 +1,71 @@
+// ==UserScript==
+// @name         LinkUnlocker Auto Decrypt
+// @namespace    http://tampermonkey.net/
+// @version      1.0
+// @description  Automatically decrypt URLs on linkunlocker.com
+// @author       You
+// @match        https://linkunlocker.com/*
+// @grant        none
+// ==/UserScript==
+
+(async function() {
+    'use strict';
+
+    try {
+        // Tìm script chứa "_secureTarget"
+        const scripts = document.querySelectorAll("script");
+        const foundScript = Array.from(scripts).find(script => script.textContent.includes("_secureTarget"));
+
+        if (!foundScript) {
+            throw new Error("❌ Không tìm thấy dữ liệu trong script");
+        }
+
+        // Chuẩn hóa dữ liệu
+        const cleaned = foundScript.textContent
+            .replace(/\\"/g, '"') // Bỏ escape \"
+            .replace(/\\n/g, '')  // Bỏ xuống dòng
+            .replace(/\\'/g, "'"); // Bỏ escape \'
+
+        // Trích xuất secureTarget và id
+        const secureTarget = cleaned.match(/"_secureTarget"\s*:\s*"([^"]+)"/)?.[1] || null;
+        const id = cleaned.match(/"_id"\s*:\s*"([a-f0-9]{24})"/)?.[1] || null;
+
+        console.log("✅ secureTarget:", secureTarget);
+        console.log("✅ id:", id);
+
+        if (!id || !secureTarget) {
+            throw new Error("❌ Không trích xuất được id hoặc secureTarget");
+        }
+
+        // Gửi yêu cầu lấy token
+        const tokenRes = await fetch('https://linkunlocker.com/api/generate-token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ unlockerId: id })
+        });
+        if (!tokenRes.ok) throw new Error('Failed to get token');
+        const { token } = await tokenRes.json();
+        console.log('Token:', token);
+
+        // Gửi yêu cầu giải mã URL
+        const urlRes = await fetch('https://linkunlocker.com/api/decrypt-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                encryptedUrl: secureTarget,
+                requestToken: token,
+                unlockerId: id,
+                useAdDestination: false,
+                adDestination: ''
+            })
+        });
+        if (!urlRes.ok) throw new Error('Failed to decrypt URL');
+        const { url } = await urlRes.json();
+        console.log('Decrypted URL:', url);
+
+        // Chuyển hướng
+        window.location.href = url;
+    } catch (error) {
+        console.error('Error:', error.message);
+    }
+})();
