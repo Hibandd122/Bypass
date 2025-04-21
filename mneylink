@@ -1,0 +1,56 @@
+// ==UserScript==
+// @name         MoneyLink Automation
+// @namespace    http://tampermonkey.net/
+// @version      1.3
+// @description  Automate MoneyLink code fetching and form submission
+// @author       You
+// @match        https://mneylink.com/*
+// @grant        GM_xmlhttpRequest
+// @connect      mneylink.com
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=https://mneylink.com
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // Step 1: Fetch the initial URL to get the code
+    const fetchUrl = 'https://mneylink.com/load_traffic?&r=https://www.google.com/&t=60&w=https://www.google.com/';
+
+    GM_xmlhttpRequest({
+        method: 'GET',
+        url: fetchUrl,
+        onload: function(response) {
+            try {
+                const jsonResponse = JSON.parse(response.responseText);
+                if (jsonResponse.status === 1 && jsonResponse.data.html) {
+                    const code = jsonResponse.data.html; // e.g., hsF3nUndST
+                    console.log('Extracted code:', code);
+
+                    // Step 2: Check if on mneylink.com and process form
+                    if (window.location.href.startsWith('https://mneylink.com/')) {
+                        const codeInput = document.querySelector('input#code');
+                        const submitButton = document.querySelector('button#invisibleCaptchaShortlink');
+
+                        if (codeInput && submitButton) {
+                            // Step 3: Enter the code into the input field
+                            codeInput.value = code;
+
+                            // Step 4: Programmatically click the submit button
+                            submitButton.click();
+                            console.log('Code entered and submit button clicked');
+                        } else {
+                            console.error('Input field or submit button not found');
+                        }
+                    }
+                } else {
+                    console.error('Invalid response or no code found');
+                }
+            } catch (e) {
+                console.error('Error parsing response:', e);
+            }
+        },
+        onerror: function(error) {
+            console.error('Error fetching URL:', error);
+        }
+    });
+})();
