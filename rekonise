@@ -1,0 +1,52 @@
+// ==UserScript==
+// @name         Rekonise Redirect
+// @namespace    http://tampermonkey.net/
+// @version      0.1
+// @description  Fetch API and redirect to the URL inside
+// @author       You
+// @match        https://rekonise.com/*
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // Lấy URL hiện tại
+    const currentUrl = window.location.href;
+
+    // Kiểm tra nếu URL khớp với mẫu https://rekonise.com/sterling-hub-best-volleyball-legends-script-eqxu8
+    const regex = /https:\/\/rekonise\.com\/(.+)/;
+    const match = currentUrl.match(regex);
+
+    if (match && match[1]) {
+        const slug = match[1]; // Lấy phần sau "https://rekonise.com/", ví dụ: sterling-hub-best-volleyball-legends-script-eqxu8
+        const apiUrl = `https://api.rekonise.com/social-unlocks/${slug}/unlock`;
+
+        // Fetch dữ liệu từ API
+        fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json(); // Giả sử API trả về JSON
+            })
+            .then(data => {
+                // Kiểm tra nếu có url trong dữ liệu trả về
+                if (data && data.url) {
+                    const redirectUrl = data.url;
+                    // Thay thế trang hiện tại bằng URL nhận được
+                    window.location.replace(redirectUrl);
+                } else {
+                    console.log('Không tìm thấy url trong dữ liệu trả về');
+                }
+            })
+            .catch(error => {
+                console.error('Có lỗi xảy ra:', error);
+            });
+    }
+})();
