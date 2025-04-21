@@ -1,0 +1,126 @@
+// ==UserScript==
+// @name         Linkvertise Auto Bypass
+// @namespace    http://tampermonkey.net/
+// @version      1.0
+// @description  Bỏ qua Linkvertise nhanh
+// @author       Bạn
+// @match        https://linkvertise.com/*
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=linkvertise.com
+// @grant        none
+// @run-at       document-end
+// ==/UserScript==
+
+(async () => {
+    const isLongUrl = () => /https:\/\/linkvertise\.com\/\d+\/\d+\/\d+\/dynamic\?r=[a-zA-Z0-9%=_-]+&o=sharing/.test(location.href);
+
+    const waitEl = (sel, t = 1e4) => new Promise((r, j) => {
+        let e = 0;
+        const i = setInterval(() => {
+            const el = document.querySelector(sel);
+            if (el) { clearInterval(i); r(el); }
+            else if (e >= t) { clearInterval(i); j(`Timeout: ${sel}`); }
+            e += 100;
+        }, 100);
+    });
+
+    const bypass = async () => {
+        const u = 'https://publisher.linkvertise.com/graphql';
+        const p = location.href.split('/');
+        const id = p[3];
+        let l = p[4].split('?')[0];
+        const h = {
+            'Accept': 'application/json',
+            'Authorization': 'Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL3B1Ymxpc2hlci5saW5rdmVydGlzZS5jb20vYXBpL3YxL2F1dGgvbG9naW4iLCJpYXQiOjE3MzkzMzM2NzUsIm5iZiI6MTczOTMzMzY3NSwianRpIjoiSVlJZFlCMzJlMlNqZFE5YiIsInN1YiI6Mzc5MjUwMiwicHJ2IjoiN2IzZmVmNDNmOTgxZTE3Nzc5MGQwMGJkZjQ1M2ZhZGM3NzNmNzI4YyJ9.rinBWBjTpB1FGvaBpPchzyfDIx43t2iHfvZTKxsbPSs',
+            'Content-Type': 'application/json',
+            'Origin': 'https://linkvertise.com',
+            'Referer': 'https://linkvertise.com/',
+            'User-Agent': navigator.userAgent
+        };
+
+        try {
+            const b1 = JSON.stringify({
+                operationName: "getDetailPageContent",
+                variables: { linkIdentificationInput: { userIdAndUrl: { user_id: id, url: l } }, origin: "sharing", additional_data: { taboola: { external_referrer: "", user_id: "fallbackUserId", url: location.href, test_group: "old", session_id: null } } },
+                query: `mutation getDetailPageContent($linkIdentificationInput: PublicLinkIdentificationInput!, $origin: String, $additional_data: CustomAdOfferProviderAdditionalData!) { getDetailPageContent(linkIdentificationInput: $linkIdentificationInput origin: $origin additional_data: $additional_data) { access_token __typename } }`
+            });
+
+            const r1 = await fetch(u, { method: 'POST', headers: h, body: b1 });
+            if (!r1.ok) throw new Error(`HTTP ${r1.status}`);
+            const d1 = await r1.json();
+            const t = d1?.data?.getDetailPageContent?.access_token;
+            if (!t) { alt(); return; }
+
+            const b2 = JSON.stringify({
+                operationName: "completeDetailPageContent",
+                variables: { linkIdentificationInput: { userIdAndUrl: { user_id: id, url: l } }, completeDetailPageContentInput: { access_token: t } },
+                query: `mutation completeDetailPageContent($linkIdentificationInput: PublicLinkIdentificationInput!, $completeDetailPageContentInput: CompleteDetailPageContentInput!) { completeDetailPageContent(linkIdentificationInput: $linkIdentificationInput completeDetailPageContentInput: $completeDetailPageContentInput) { CUSTOM_AD_STEP TARGET additional_target_access_information { remaining_waiting_time can_not_access should_show_ads has_long_paywall_duration __typename } __typename } }`
+            });
+
+            const r2 = await fetch(u, { method: 'POST', headers: h, body: b2 });
+            if (!r2.ok) throw new Error(`HTTP ${r2.status}`);
+            const d2 = await r2.json();
+            const v = d2?.data?.completeDetailPageContent?.TARGET;
+
+            const b3 = JSON.stringify({
+                operationName: "getDetailPageTarget",
+                variables: { linkIdentificationInput: { userIdAndUrl: { user_id: id, url: l } }, token: v },
+                query: `mutation getDetailPageTarget($linkIdentificationInput: PublicLinkIdentificationInput!, $token: String!) { getDetailPageTarget(linkIdentificationInput: $linkIdentificationInput token: $token) { type url paste short_link_title __typename } }`
+            });
+
+            const r3 = await fetch(u, { method: 'POST', headers: h, body: b3 });
+            if (!r3.ok) throw new Error(`HTTP ${r3.status}`);
+            const d3 = await r3.json();
+            const ty = d3?.data?.getDetailPageTarget?.type;
+            const ur = d3?.data?.getDetailPageTarget?.url;
+            const pa = d3?.data?.getDetailPageTarget?.paste;
+
+            if (ty === "URL" && ur) location.href = ur;
+            else if (ty === "PASTE" && pa) show(pa);
+        } catch (e) { console.warn("Error:", e); }
+    };
+
+    const show = (c) => {
+        const d = document.createElement('div');
+        Object.assign(d.style, { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', backgroundColor: '#fff', padding: '20px', border: '1px solid #ccc', boxShadow: '0 2px 10px rgba(0,0,0,0.2)', zIndex: '9999' });
+        d.innerHTML = `<h3 style="margin-bottom: 10px;">PASTE Content</h3><pre style="white-space: pre-wrap; word-wrap: break-word;">${c}</pre>`;
+
+        document.body.appendChild(d);
+
+        const cl = document.createElement('button');
+        cl.innerText = 'Đóng';
+        cl.style.marginTop = '10px';
+        cl.onclick = () => d.remove();
+        d.appendChild(cl);
+
+        const cp = document.createElement('button');
+        cp.innerText = 'Sao chép';
+        cp.style.margin = '10px 0 0 10px';
+        cp.onclick = () => {
+            const t = document.createElement('textarea');
+            t.value = c;
+            document.body.appendChild(t);
+            t.select();
+            document.execCommand('copy');
+            document.body.removeChild(t);
+            alert('Đã sao chép!');
+        };
+        d.appendChild(cp);
+    };
+
+    const alt = () => {
+        (async () => {
+            if (/[?&]r=/.test(location.href)) {
+                const r = new URLSearchParams(location.search).get('r');
+                location.href = atob(decodeURIComponent(r));
+            }
+        })();
+    };
+
+    if (isLongUrl()) alt();
+    else {
+        try {
+            await waitEl('.action-box__content-table__rating-wrapper');
+            await bypass();
+        } catch (e) { console.warn(e); }
+    }
+})();
