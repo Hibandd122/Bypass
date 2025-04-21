@@ -1,0 +1,46 @@
+// ==UserScript==
+// @name         Ez4Short Auto Redirect
+// @namespace    http://tampermonkey.net/
+// @version      1.1
+// @description  Automatically send POST request to ez4short.com/links/go with custom headers and redirect to the response URL
+// @author       You
+// @match        https://ez4short.com/*
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // Kiểm tra xem URL hiện tại có khớp với pattern https://ez4short.com/*
+    if (window.location.href.match(/^https:\/\/ez4short\.com\/.*/)) {
+        // Lấy dữ liệu form từ các input hidden
+        const formData = new FormData();
+        formData.append('_method', 'POST');
+        formData.append('_csrfToken', document.querySelector('input[name="_csrfToken"]').value);
+        formData.append('ad_form_data', document.querySelector('input[name="ad_form_data"]').value);
+        formData.append('_Token[fields]', document.querySelector('input[name="_Token[fields]"]').value);
+        formData.append('_Token[unlocked]', document.querySelector('input[name="_Token[unlocked]"]').value);
+
+        // Thiết lập headers
+        const headers = {
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
+            'x-requested-with': 'XMLHttpRequest'
+        };
+
+        // Gửi request POST với headers
+        fetch('https://ez4short.com/links/go', {
+            method: 'POST',
+            headers: headers,
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Kiểm tra nếu request thành công và có URL trong response
+            if (data.status === 'success' && data.url) {
+                // Thay URL hiện tại bằng URL từ response
+                window.location.replace(data.url);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+})();
