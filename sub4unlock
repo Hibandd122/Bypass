@@ -1,0 +1,28 @@
+// ==UserScript==
+// @name         Sub4unlock
+// @namespace    http://tampermonkey.net/
+// @version      0.1
+// @description  Replace current URL with loot-link URL from button
+// @author       You
+// @match        https://www.animalspub.com/*
+// @match        https://sub4unlock.io/*
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // Tìm element dựa trên class và cấu trúc chung, không phụ thuộc href cụ thể
+    const unlockButton = document.querySelector('a.get-link.buttonpanel.buttonpanel-block.btn-lg');
+
+    if (unlockButton) {
+        // Lấy URL từ href bất kỳ của button
+        const newUrl = unlockButton.getAttribute('href');
+
+        // Kiểm tra xem href có tồn tại và là URL hợp lệ không
+        if (newUrl && newUrl.startsWith('http')) {
+            // Thay thế URL hiện tại bằng URL mới
+            window.location.replace(newUrl);
+        }
+    }
+})();
