@@ -1,0 +1,29 @@
+// ==UserScript==
+// @name         Auto traffic24h.net
+// @match        https://traffic24h.net/*
+// @icon         https://traffic24h.store/wp-content/uploads/2023/11/500px.png
+// ==/UserScript==
+
+setTimeout(() => {
+  let d = { href: '', hostname: '', user_agent: navigator.userAgent };
+  for (let s of document.scripts) {
+    let m = s.textContent.match(/website:\s*"([^"]+)"/);
+    if (m) { d.href = m[1]; d.hostname = new URL(m[1]).hostname; break; }
+  }
+  if (!d.href) return;
+  let link = location.pathname.split('/').pop();
+  fetch('https://demo24h.wiki/Ping/Get', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d)
+  })
+  .then(r => r.json())
+  .then(({ code }) => fetch('https://traffic24h.net/assets/ajaxs/Authbk.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ type: 'Checkcodez', website: d.href, code, link })
+  }))
+  .then(r => r.text())
+  .then(t => {
+    let m = t.match(/\$ ?\("#redirect"\)\.val\("([^"]+)"\)/);
+    if (m) location.href = m[1];
+  });
+}, 500);
