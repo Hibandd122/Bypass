@@ -1,0 +1,71 @@
+// ==UserScript==
+// @name         Layma.net
+// @namespace    https://layma.net/
+// @version      1.1
+// @description  Tự động lấy Code and Chuyển trang
+// @author       Bạn
+// @match        https://layma.net/*
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // Lấy tokenId và campainId từ trang web
+    const tokenId = document.getElementById("tokenId")?.innerText || "";
+    const campainId = document.getElementById("campainId")?.innerText || "";
+
+    async function getCodeAndCheck(campainId, tokenId) {
+        const getCodeUrl = "https://api.layma.net/api/admin/codemanager/getcode";
+        const checkCodeUrl = "https://api.layma.net/api/admin/codemanager/checkcode";
+
+        const requestData = {
+            browser: "Chrome",
+            browserVersion: "133.0.0.0",
+            browserMajorVersion: 133,
+            cookies: true,
+            mobile: false,
+            os: "Windows",
+            osVersion: "10",
+            screen: "1920 x 1080",
+            referrer: "https://www.google.com/",
+            trafficid: campainId,
+            solution: "0"
+        };
+
+        try {
+            // Gửi request lấy mã
+            const response = await fetch(getCodeUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(requestData)
+            });
+
+            const data = await response.json();
+
+            // Gửi request kiểm tra mã
+            const checkData = {
+                Code: data.html,
+                Token: tokenId,
+                CampainId: campainId,
+                UserAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+                DeviceScreen: "1920 x 1080"
+            };
+
+            const checkResponse = await fetch(checkCodeUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(checkData)
+            });
+
+            // Chuyển hướng đến link trả về
+            window.location.href = await checkResponse.text();
+
+        } catch (error) {
+            console.error("Lỗi khi gửi request:", error);
+        }
+    }
+
+    // Gọi hàm chạy ngay lập tức
+    getCodeAndCheck(campainId, tokenId);
+})();
